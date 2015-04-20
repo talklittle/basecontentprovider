@@ -13,7 +13,8 @@ buildscript {
 
 publish {
     userOrg = 'talklittle-llc'
-    groupId = 'com.talklittle'
+    repoName = 'android-libraries'
+    groupId = 'com.talklittle.basecontentprovider'
     artifactId = 'basecontentprovider'
     publishVersion = '0.1.0'
     description = 'Android Base ContentProvider for SQLite convenience'
