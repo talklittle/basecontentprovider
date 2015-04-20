@@ -1,5 +1,25 @@
 apply plugin: 'com.android.library'
 
+apply plugin: 'bintray-release'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.novoda:bintray-release:0.2.10'
+    }
+}
+
+publish {
+    userOrg = 'talklittle-llc'
+    groupId = 'com.talklittle'
+    artifactId = 'basecontentprovider'
+    publishVersion = '0.1.0'
+    description = 'Android Base ContentProvider for SQLite convenience'
+    website = 'https://github.com/talklittle/basecontentprovider'
+}
+
 android {
     compileSdkVersion 22
     buildToolsVersion "22.0.1"
