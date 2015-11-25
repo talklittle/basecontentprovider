@@ -56,6 +56,7 @@ public abstract class BaseContentProvider extends ContentProvider {
         Cursor c = qb.query(db, projection, selection, selectionArgs, null, null, orderBy);
 
         // Tell the cursor what uri to watch, so it knows when its source data changes
+        //noinspection ConstantConditions
         c.setNotificationUri(getContext().getContentResolver(), uri);
         return c;
     }
@@ -94,6 +95,7 @@ public abstract class BaseContentProvider extends ContentProvider {
 
         if (rowId > 0) {
             Uri noteUri = ContentUris.withAppendedId(getContentUri(), rowId);
+            //noinspection ConstantConditions
             getContext().getContentResolver().notifyChange(noteUri, null);
             return noteUri;
         }
@@ -140,6 +142,7 @@ public abstract class BaseContentProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
+        //noinspection ConstantConditions
         getContext().getContentResolver().notifyChange(uri, null);
         return count;
     }
@@ -165,6 +168,7 @@ public abstract class BaseContentProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
+        //noinspection ConstantConditions
         getContext().getContentResolver().notifyChange(uri, null);
         return count;
     }
