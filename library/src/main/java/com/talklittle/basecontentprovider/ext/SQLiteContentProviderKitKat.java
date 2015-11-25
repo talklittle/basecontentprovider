@@ -16,6 +16,7 @@
 
 package com.talklittle.basecontentprovider.ext;
 
+import android.annotation.TargetApi;
 import android.content.ContentProvider;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
@@ -35,10 +36,11 @@ import java.util.ArrayList;
 /**
  * General purpose {@link ContentProvider} base class that uses SQLiteDatabase for storage.
  */
-public abstract class SQLiteContentProvider extends ContentProvider
+@TargetApi(19)
+public abstract class SQLiteContentProviderKitKat extends ContentProvider
         implements SQLiteTransactionListener {
 
-    private static final String TAG = "SQLiteContentProvider";
+    private static final String TAG = "SQLiteContentProviderKitKat";
 
     private SQLiteOpenHelper mOpenHelper;
     private volatile boolean mNotifyChange;
