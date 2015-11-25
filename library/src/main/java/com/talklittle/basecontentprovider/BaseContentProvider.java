@@ -9,6 +9,7 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
 import java.util.HashMap;
@@ -26,7 +27,7 @@ public abstract class BaseContentProvider extends ContentProvider {
     }
 
     @Override
-    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+    public Cursor query(@NonNull Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
         qb.setTables(mDbHelper.getTableName());
 
@@ -63,7 +64,7 @@ public abstract class BaseContentProvider extends ContentProvider {
      * If doing replace, override isReplace() and doReplace().
      */
     @Override
-    public Uri insert(Uri uri, ContentValues initialValues) {
+    public Uri insert(@NonNull Uri uri, ContentValues initialValues) {
         // Validate the requested uri
         if (getUriMatcher().match(uri) != getItemListUriId()) {
             throw new IllegalArgumentException("Unsupported insert URI " + uri);
@@ -119,7 +120,7 @@ public abstract class BaseContentProvider extends ContentProvider {
     protected abstract void setDefaultRequiredColumnValues(ContentValues values, Long now);
 
     @Override
-    public int delete(Uri uri, String where, String[] whereArgs) {
+    public int delete(@NonNull Uri uri, String where, String[] whereArgs) {
         SQLiteDatabase db = getWritableDatabase();
         int count;
         int matchId = getUriMatcher().match(uri);
@@ -144,7 +145,7 @@ public abstract class BaseContentProvider extends ContentProvider {
     }
 
     @Override
-    public int update(Uri uri, ContentValues values, String where, String[] whereArgs) {
+    public int update(@NonNull Uri uri, ContentValues values, String where, String[] whereArgs) {
         SQLiteDatabase db = mDbHelper.getWritableDatabase();
         int count;
         int matchId = getUriMatcher().match(uri);
@@ -169,7 +170,7 @@ public abstract class BaseContentProvider extends ContentProvider {
     }
 
     @Override
-    public String getType(Uri uri) {
+    public String getType(@NonNull Uri uri) {
         int matchId = getUriMatcher().match(uri);
         if (matchId == getItemListUriId()) {
             return getItemListContentType();
