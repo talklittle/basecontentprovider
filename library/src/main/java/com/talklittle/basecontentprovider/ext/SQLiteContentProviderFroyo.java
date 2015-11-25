@@ -27,6 +27,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteTransactionListener;
 import android.net.Uri;
+import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
 
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 public abstract class SQLiteContentProviderFroyo extends ContentProvider
         implements SQLiteTransactionListener {
 
+    @SuppressWarnings("unused")
     private static final String TAG = "SQLiteContentProviderFroyo";
 
     private SQLiteOpenHelper mOpenHelper;
@@ -73,6 +75,7 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
 
     protected abstract void notifyChange();
 
+    @SuppressWarnings("unused")
     protected SQLiteOpenHelper getDatabaseHelper() {
         return mOpenHelper;
     }
@@ -82,7 +85,7 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     }
 
     @Override
-    public Uri insert(Uri uri, ContentValues values) {
+    public Uri insert(@NonNull Uri uri, ContentValues values) {
         Uri result = null;
         boolean applyingBatch = applyingBatch();
         if (!applyingBatch) {
@@ -109,11 +112,12 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     }
 
     @Override
-    public int bulkInsert(Uri uri, ContentValues[] values) {
+    public int bulkInsert(@NonNull Uri uri, @NonNull ContentValues[] values) {
         int numValues = values.length;
         mDb = mOpenHelper.getWritableDatabase();
         mDb.beginTransactionWithListener(this);
         try {
+            //noinspection ForLoopReplaceableByForEach
             for (int i = 0; i < numValues; i++) {
                 Uri result = insertInTransaction(uri, values[i]);
                 if (result != null) {
@@ -131,7 +135,7 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     }
 
     @Override
-    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+    public int update(@NonNull Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
         if (!applyingBatch) {
@@ -159,7 +163,7 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     }
 
     @Override
-    public int delete(Uri uri, String selection, String[] selectionArgs) {
+    public int delete(@NonNull Uri uri, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
         if (!applyingBatch) {
@@ -185,8 +189,9 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
         return count;
     }
 
+    @NonNull
     @Override
-    public ContentProviderResult[] applyBatch(ArrayList<ContentProviderOperation> operations)
+    public ContentProviderResult[] applyBatch(@NonNull ArrayList<ContentProviderOperation> operations)
             throws OperationApplicationException {
         mDb = mOpenHelper.getWritableDatabase();
         mDb.beginTransactionWithListener(this);

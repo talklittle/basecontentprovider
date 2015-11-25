@@ -30,6 +30,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Process;
 import android.provider.CalendarContract;
+import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
 
@@ -40,6 +41,7 @@ import java.util.ArrayList;
 public abstract class SQLiteContentProviderKitKat extends ContentProvider
         implements SQLiteTransactionListener {
 
+    @SuppressWarnings("unused")
     private static final String TAG = "SQLiteContentProviderKitKat";
 
     private SQLiteOpenHelper mOpenHelper;
@@ -80,6 +82,7 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
 
     protected abstract void notifyChange(boolean syncToNetwork);
 
+    @SuppressWarnings("unused")
     protected SQLiteOpenHelper getDatabaseHelper() {
         return mOpenHelper;
     }
@@ -89,7 +92,7 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
     }
 
     @Override
-    public Uri insert(Uri uri, ContentValues values) {
+    public Uri insert(@NonNull Uri uri, ContentValues values) {
         Uri result = null;
         boolean applyingBatch = applyingBatch();
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
@@ -119,13 +122,14 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
     }
 
     @Override
-    public int bulkInsert(Uri uri, ContentValues[] values) {
+    public int bulkInsert(@NonNull Uri uri, @NonNull ContentValues[] values) {
         int numValues = values.length;
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
         mDb = mOpenHelper.getWritableDatabase();
         mDb.beginTransactionWithListener(this);
         final long identity = clearCallingIdentityInternal();
         try {
+            //noinspection ForLoopReplaceableByForEach
             for (int i = 0; i < numValues; i++) {
                 Uri result = insertInTransaction(uri, values[i], isCallerSyncAdapter);
                 if (result != null) {
@@ -144,7 +148,7 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
     }
 
     @Override
-    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+    public int update(@NonNull Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
@@ -177,7 +181,7 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
     }
 
     @Override
-    public int delete(Uri uri, String selection, String[] selectionArgs) {
+    public int delete(@NonNull Uri uri, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
@@ -215,8 +219,9 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
         return isCurrentSyncAdapter;
     }
 
+    @NonNull
     @Override
-    public ContentProviderResult[] applyBatch(ArrayList<ContentProviderOperation> operations)
+    public ContentProviderResult[] applyBatch(@NonNull ArrayList<ContentProviderOperation> operations)
             throws OperationApplicationException {
         final int numOperations = operations.size();
         if (numOperations == 0) {
@@ -288,6 +293,7 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
     private final ThreadLocal<Integer> mOriginalCallingUid = new ThreadLocal<Integer>();
 
 
+    @SuppressWarnings("unused")
     protected String getCachedCallingPackage() {
         return mCallingPackage.get();
     }
@@ -320,7 +326,7 @@ public abstract class SQLiteContentProviderKitKat extends ContentProvider
      * If this is the last restore on the stack of calls to
      * {@link android.os.Binder#clearCallingIdentity()}, then the cached calling package will also
      * be cleared.
-     * @param identity
+     * @param identity token to pass to {@link Binder#restoreCallingIdentity(long)}
      */
     protected void restoreCallingIdentityInternal(long identity) {
         Binder.restoreCallingIdentity(identity);

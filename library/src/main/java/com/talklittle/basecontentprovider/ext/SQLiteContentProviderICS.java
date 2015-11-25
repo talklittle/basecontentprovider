@@ -28,6 +28,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteTransactionListener;
 import android.net.Uri;
 import android.provider.CalendarContract;
+import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
 
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 public abstract class SQLiteContentProviderICS extends ContentProvider
         implements SQLiteTransactionListener {
 
+    @SuppressWarnings("unused")
     private static final String TAG = "SQLiteContentProviderICS";
 
     private SQLiteOpenHelper mOpenHelper;
@@ -78,6 +80,7 @@ public abstract class SQLiteContentProviderICS extends ContentProvider
 
     protected abstract void notifyChange(boolean syncToNetwork);
 
+    @SuppressWarnings("unused")
     protected SQLiteOpenHelper getDatabaseHelper() {
         return mOpenHelper;
     }
@@ -87,7 +90,7 @@ public abstract class SQLiteContentProviderICS extends ContentProvider
     }
 
     @Override
-    public Uri insert(Uri uri, ContentValues values) {
+    public Uri insert(@NonNull Uri uri, ContentValues values) {
         Uri result = null;
         boolean applyingBatch = applyingBatch();
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
@@ -115,12 +118,13 @@ public abstract class SQLiteContentProviderICS extends ContentProvider
     }
 
     @Override
-    public int bulkInsert(Uri uri, ContentValues[] values) {
+    public int bulkInsert(@NonNull Uri uri, @NonNull ContentValues[] values) {
         int numValues = values.length;
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
         mDb = mOpenHelper.getWritableDatabase();
         mDb.beginTransactionWithListener(this);
         try {
+            //noinspection ForLoopReplaceableByForEach
             for (int i = 0; i < numValues; i++) {
                 Uri result = insertInTransaction(uri, values[i], isCallerSyncAdapter);
                 if (result != null) {
@@ -138,7 +142,7 @@ public abstract class SQLiteContentProviderICS extends ContentProvider
     }
 
     @Override
-    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+    public int update(@NonNull Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
@@ -169,7 +173,7 @@ public abstract class SQLiteContentProviderICS extends ContentProvider
     }
 
     @Override
-    public int delete(Uri uri, String selection, String[] selectionArgs) {
+    public int delete(@NonNull Uri uri, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
         boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
@@ -205,8 +209,9 @@ public abstract class SQLiteContentProviderICS extends ContentProvider
         return isCurrentSyncAdapter;
     }
 
+    @NonNull
     @Override
-    public ContentProviderResult[] applyBatch(ArrayList<ContentProviderOperation> operations)
+    public ContentProviderResult[] applyBatch(@NonNull ArrayList<ContentProviderOperation> operations)
             throws OperationApplicationException {
         mDb = mOpenHelper.getWritableDatabase();
         mDb.beginTransactionWithListener(this);
