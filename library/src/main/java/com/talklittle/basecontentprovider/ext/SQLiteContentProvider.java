@@ -16,7 +16,6 @@
 
 package com.talklittle.basecontentprovider.ext;
 
-import android.annotation.TargetApi;
 import android.content.ContentProvider;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
@@ -27,6 +26,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteTransactionListener;
 import android.net.Uri;
+import android.os.Binder;
+import android.os.Build;
+import android.os.Process;
+import android.provider.CalendarContract;
 import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
@@ -34,12 +37,11 @@ import java.util.ArrayList;
 /**
  * General purpose {@link ContentProvider} base class that uses SQLiteDatabase for storage.
  */
-@TargetApi(8)
-public abstract class SQLiteContentProviderFroyo extends ContentProvider
+public abstract class SQLiteContentProvider extends ContentProvider
         implements SQLiteTransactionListener {
 
     @SuppressWarnings("unused")
-    private static final String TAG = "SQLiteContentProviderFroyo";
+    private static final String TAG = "SQLiteContentProvider";
 
     private SQLiteOpenHelper mOpenHelper;
     private volatile boolean mNotifyChange;
@@ -47,6 +49,8 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
 
     private final ThreadLocal<Boolean> mApplyingBatch = new ThreadLocal<Boolean>();
     private static final int SLEEP_AFTER_YIELD_DELAY = 4000;
+
+    private Boolean mIsCallerSyncAdapter;
 
     @Override
     public boolean onCreate() {
@@ -60,20 +64,22 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     /**
      * The equivalent of the {@link #insert} method, but invoked within a transaction.
      */
-    protected abstract Uri insertInTransaction(Uri uri, ContentValues values);
+    protected abstract Uri insertInTransaction(Uri uri, ContentValues values,
+            boolean callerIsSyncAdapter);
 
     /**
      * The equivalent of the {@link #update} method, but invoked within a transaction.
      */
     protected abstract int updateInTransaction(Uri uri, ContentValues values, String selection,
-                                               String[] selectionArgs);
+            String[] selectionArgs, boolean callerIsSyncAdapter);
 
     /**
      * The equivalent of the {@link #delete} method, but invoked within a transaction.
      */
-    protected abstract int deleteInTransaction(Uri uri, String selection, String[] selectionArgs);
+    protected abstract int deleteInTransaction(Uri uri, String selection, String[] selectionArgs,
+            boolean callerIsSyncAdapter);
 
-    protected abstract void notifyChange();
+    protected abstract void notifyChange(boolean syncToNetwork);
 
     @SuppressWarnings("unused")
     protected SQLiteOpenHelper getDatabaseHelper() {
@@ -88,22 +94,25 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     public Uri insert(@NonNull Uri uri, ContentValues values) {
         Uri result = null;
         boolean applyingBatch = applyingBatch();
+        boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
         if (!applyingBatch) {
             mDb = mOpenHelper.getWritableDatabase();
             mDb.beginTransactionWithListener(this);
+            final long identity = clearCallingIdentityInternal();
             try {
-                result = insertInTransaction(uri, values);
+                result = insertInTransaction(uri, values, isCallerSyncAdapter);
                 if (result != null) {
                     mNotifyChange = true;
                 }
                 mDb.setTransactionSuccessful();
             } finally {
+                restoreCallingIdentityInternal(identity);
                 mDb.endTransaction();
             }
 
-            onEndTransaction();
+            onEndTransaction(!isCallerSyncAdapter && shouldSyncFor(uri));
         } else {
-            result = insertInTransaction(uri, values);
+            result = insertInTransaction(uri, values, isCallerSyncAdapter);
             if (result != null) {
                 mNotifyChange = true;
             }
@@ -114,12 +123,14 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     @Override
     public int bulkInsert(@NonNull Uri uri, @NonNull ContentValues[] values) {
         int numValues = values.length;
+        boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
         mDb = mOpenHelper.getWritableDatabase();
         mDb.beginTransactionWithListener(this);
+        final long identity = clearCallingIdentityInternal();
         try {
             //noinspection ForLoopReplaceableByForEach
             for (int i = 0; i < numValues; i++) {
-                Uri result = insertInTransaction(uri, values[i]);
+                Uri result = insertInTransaction(uri, values[i], isCallerSyncAdapter);
                 if (result != null) {
                     mNotifyChange = true;
                 }
@@ -127,10 +138,11 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
             }
             mDb.setTransactionSuccessful();
         } finally {
+            restoreCallingIdentityInternal(identity);
             mDb.endTransaction();
         }
 
-        onEndTransaction();
+        onEndTransaction(!isCallerSyncAdapter);
         return numValues;
     }
 
@@ -138,22 +150,27 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     public int update(@NonNull Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
+        boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
         if (!applyingBatch) {
             mDb = mOpenHelper.getWritableDatabase();
             mDb.beginTransactionWithListener(this);
+            final long identity = clearCallingIdentityInternal();
             try {
-                count = updateInTransaction(uri, values, selection, selectionArgs);
+                count = updateInTransaction(uri, values, selection, selectionArgs,
+                            isCallerSyncAdapter);
                 if (count > 0) {
                     mNotifyChange = true;
                 }
                 mDb.setTransactionSuccessful();
             } finally {
+                restoreCallingIdentityInternal(identity);
                 mDb.endTransaction();
             }
 
-            onEndTransaction();
+            onEndTransaction(!isCallerSyncAdapter && shouldSyncFor(uri));
         } else {
-            count = updateInTransaction(uri, values, selection, selectionArgs);
+            count = updateInTransaction(uri, values, selection, selectionArgs,
+                        isCallerSyncAdapter);
             if (count > 0) {
                 mNotifyChange = true;
             }
@@ -166,22 +183,25 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     public int delete(@NonNull Uri uri, String selection, String[] selectionArgs) {
         int count = 0;
         boolean applyingBatch = applyingBatch();
+        boolean isCallerSyncAdapter = getIsCallerSyncAdapter(uri);
         if (!applyingBatch) {
             mDb = mOpenHelper.getWritableDatabase();
             mDb.beginTransactionWithListener(this);
+            final long identity = clearCallingIdentityInternal();
             try {
-                count = deleteInTransaction(uri, selection, selectionArgs);
+                count = deleteInTransaction(uri, selection, selectionArgs, isCallerSyncAdapter);
                 if (count > 0) {
                     mNotifyChange = true;
                 }
                 mDb.setTransactionSuccessful();
             } finally {
+                restoreCallingIdentityInternal(identity);
                 mDb.endTransaction();
             }
 
-            onEndTransaction();
+            onEndTransaction(!isCallerSyncAdapter && shouldSyncFor(uri));
         } else {
-            count = deleteInTransaction(uri, selection, selectionArgs);
+            count = deleteInTransaction(uri, selection, selectionArgs, isCallerSyncAdapter);
             if (count > 0) {
                 mNotifyChange = true;
             }
@@ -189,15 +209,33 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
         return count;
     }
 
+    protected boolean getIsCallerSyncAdapter(Uri uri) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            return false;
+        }
+
+        boolean isCurrentSyncAdapter = QueryParameterUtils.readBooleanQueryParameter(uri,
+                CalendarContract.CALLER_IS_SYNCADAPTER, false);
+        if (mIsCallerSyncAdapter == null || mIsCallerSyncAdapter) {
+            mIsCallerSyncAdapter = isCurrentSyncAdapter;
+        }
+        return isCurrentSyncAdapter;
+    }
+
     @NonNull
     @Override
     public ContentProviderResult[] applyBatch(@NonNull ArrayList<ContentProviderOperation> operations)
             throws OperationApplicationException {
+        final int numOperations = operations.size();
+        if (numOperations == 0) {
+            return new ContentProviderResult[0];
+        }
         mDb = mOpenHelper.getWritableDatabase();
         mDb.beginTransactionWithListener(this);
+        final boolean isCallerSyncAdapter = getIsCallerSyncAdapter(operations.get(0).getUri());
+        final long identity = clearCallingIdentityInternal();
         try {
             mApplyingBatch.set(true);
-            final int numOperations = operations.size();
             final ContentProviderResult[] results = new ContentProviderResult[numOperations];
             for (int i = 0; i < numOperations; i++) {
                 final ContentProviderOperation operation = operations.get(i);
@@ -211,11 +249,13 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
         } finally {
             mApplyingBatch.set(false);
             mDb.endTransaction();
-            onEndTransaction();
+            onEndTransaction(!isCallerSyncAdapter);
+            restoreCallingIdentityInternal(identity);
         }
     }
 
     public void onBegin() {
+        mIsCallerSyncAdapter = null;
         onBeginTransaction();
     }
 
@@ -233,10 +273,79 @@ public abstract class SQLiteContentProviderFroyo extends ContentProvider
     protected void beforeTransactionCommit() {
     }
 
-    protected void onEndTransaction() {
+    protected void onEndTransaction(boolean syncToNetwork) {
         if (mNotifyChange) {
             mNotifyChange = false;
-            notifyChange();
+            // We sync to network if the caller was not the sync adapter
+            notifyChange(syncToNetwork);
+        }
+    }
+
+    /**
+     * Some URI's are maintained locally so we should not request a sync for them
+     */
+    protected abstract boolean shouldSyncFor(Uri uri);
+
+    /** The package to most recently query(), not including further internally recursive calls. */
+    private final ThreadLocal<String> mCallingPackage = new ThreadLocal<String>();
+
+    /**
+     * The calling Uid when a calling package is cached, so we know when the stack of any
+     * recursive calls to clearCallingIdentity and restoreCallingIdentity is complete.
+     */
+    private final ThreadLocal<Integer> mOriginalCallingUid = new ThreadLocal<Integer>();
+
+
+    @SuppressWarnings("unused")
+    protected String getCachedCallingPackage() {
+        return mCallingPackage.get();
+    }
+
+    /**
+     * Call {@link android.os.Binder#clearCallingIdentity()}, while caching the calling package
+     * name, so that it can be saved if this is part of an event mutation.
+     */
+    protected long clearCallingIdentityInternal() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            return -1;
+        }
+
+        // Only set the calling package if the calling UID is not our own.
+        int uid = Process.myUid();
+        int callingUid = Binder.getCallingUid();
+        if (uid != callingUid) {
+            try {
+                mOriginalCallingUid.set(callingUid);
+                String callingPackage = getCallingPackage();
+                mCallingPackage.set(callingPackage);
+            } catch (SecurityException e) {
+                // If this exception is thrown, clearCallingIdentity has already been called, and
+                // calling package is already available.
+            }
+        }
+
+        return Binder.clearCallingIdentity();
+    }
+
+    /**
+     * Call {@link Binder#restoreCallingIdentity(long)}.
+     * </p>
+     * If this is the last restore on the stack of calls to
+     * {@link android.os.Binder#clearCallingIdentity()}, then the cached calling package will also
+     * be cleared.
+     * @param identity token to pass to {@link Binder#restoreCallingIdentity(long)}
+     */
+    protected void restoreCallingIdentityInternal(long identity) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            return;
+        }
+
+        Binder.restoreCallingIdentity(identity);
+
+        int callingUid = Binder.getCallingUid();
+        if (mOriginalCallingUid.get() != null && mOriginalCallingUid.get() == callingUid) {
+            mCallingPackage.set(null);
+            mOriginalCallingUid.set(null);
         }
     }
 }
