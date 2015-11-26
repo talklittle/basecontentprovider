@@ -16,7 +16,7 @@ publish {
     repoName = 'android-libraries'
     groupId = 'com.talklittle.basecontentprovider'
     artifactId = 'basecontentprovider'
-    publishVersion = '0.1.1'
+    publishVersion = '0.2.0'
     description = 'Android Base ContentProvider for SQLite convenience'
     website = 'https://github.com/talklittle/basecontentprovider'
 }
