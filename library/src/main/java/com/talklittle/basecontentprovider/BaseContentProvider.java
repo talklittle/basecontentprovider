@@ -1,6 +1,6 @@
 package com.talklittle.basecontentprovider;
 
-import android.content.ContentProvider;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.UriMatcher;
@@ -12,24 +12,23 @@ import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
+import com.talklittle.basecontentprovider.ext.SQLiteContentProvider;
+
 import java.util.HashMap;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class BaseContentProvider extends ContentProvider {
+public abstract class BaseContentProvider extends SQLiteContentProvider {
 
-    private BaseDatabaseHelper mDbHelper;
     private UriMatcher mUriMatcher;
     private HashMap<String, String> mProjectionMap;
 
-    @Override
-    public boolean onCreate() {
-        mDbHelper = createDatabaseHelper();
-        return true;
-    }
+    private final ConcurrentHashMap<Uri, Boolean> mUrisToNotify = new ConcurrentHashMap<Uri, Boolean>();
 
     @Override
     public Cursor query(@NonNull Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
-        qb.setTables(mDbHelper.getTableName());
+        qb.setTables(getTableName());
 
         int matchId = getUriMatcher().match(uri);
         if (matchId == getItemListUriId()) {
@@ -65,7 +64,7 @@ public abstract class BaseContentProvider extends ContentProvider {
      * If doing replace, override isReplace() and doReplace().
      */
     @Override
-    public Uri insert(@NonNull Uri uri, ContentValues initialValues) {
+    protected Uri insertInTransaction(@NonNull Uri uri, ContentValues initialValues, boolean callerIsSyncAdapter) {
         // Validate the requested uri
         if (getUriMatcher().match(uri) != getItemListUriId()) {
             throw new IllegalArgumentException("Unsupported insert URI " + uri);
@@ -85,19 +84,18 @@ public abstract class BaseContentProvider extends ContentProvider {
 
         long rowId;
         if (isReplace()) {
-            rowId = doReplace(db, mDbHelper.getTableName(), values);
+            rowId = doReplace(db, getTableName(), values);
         }
         else {
             synchronized (this) {
-                rowId = db.insert(mDbHelper.getTableName(), null, values);
+                rowId = db.insert(getTableName(), null, values);
             }
         }
 
         if (rowId > 0) {
-            Uri noteUri = ContentUris.withAppendedId(getContentUri(), rowId);
-            //noinspection ConstantConditions
-            getContext().getContentResolver().notifyChange(noteUri, null);
-            return noteUri;
+            Uri rowUri = ContentUris.withAppendedId(getContentUri(), rowId);
+            mUrisToNotify.put(rowUri, true);
+            return rowUri;
         }
 
         throw new SQLException("Failed to insert row into " + uri);
@@ -122,19 +120,19 @@ public abstract class BaseContentProvider extends ContentProvider {
     protected abstract void setDefaultRequiredColumnValues(ContentValues values, Long now);
 
     @Override
-    public int delete(@NonNull Uri uri, String where, String[] whereArgs) {
+    protected int deleteInTransaction(@NonNull Uri uri, String where, String[] whereArgs, boolean callerIsSyncAdapter) {
         SQLiteDatabase db = getWritableDatabase();
         int count;
         int matchId = getUriMatcher().match(uri);
         if (matchId == getItemListUriId()) {
             synchronized (this) {
-                count = db.delete(mDbHelper.getTableName(), where, whereArgs);
+                count = db.delete(getTableName(), where, whereArgs);
             }
         }
         else if (matchId == getItemSingleUriId()) {
             String itemId = uri.getPathSegments().get(1);
             synchronized (this) {
-                count = db.delete(mDbHelper.getTableName(), "_id=" + itemId
+                count = db.delete(getTableName(), "_id=" + itemId
                         + (!TextUtils.isEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
             }
         }
@@ -142,25 +140,24 @@ public abstract class BaseContentProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        //noinspection ConstantConditions
-        getContext().getContentResolver().notifyChange(uri, null);
+        mUrisToNotify.put(uri, true);
         return count;
     }
 
     @Override
-    public int update(@NonNull Uri uri, ContentValues values, String where, String[] whereArgs) {
-        SQLiteDatabase db = mDbHelper.getWritableDatabase();
+    protected int updateInTransaction(@NonNull Uri uri, ContentValues values, String where, String[] whereArgs, boolean callerIsSyncAdapter) {
+        SQLiteDatabase db = getWritableDatabase();
         int count;
         int matchId = getUriMatcher().match(uri);
         if (matchId == getItemListUriId()) {
             synchronized (this) {
-                count = db.update(mDbHelper.getTableName(), values, where, whereArgs);
+                count = db.update(getTableName(), values, where, whereArgs);
             }
         }
         else if (matchId == getItemSingleUriId()) {
             String itemId = uri.getPathSegments().get(1);
             synchronized (this) {
-                count = db.update(mDbHelper.getTableName(), values, "_id=" + itemId
+                count = db.update(getTableName(), values, "_id=" + itemId
                         + (!TextUtils.isEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
             }
         }
@@ -168,8 +165,7 @@ public abstract class BaseContentProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        //noinspection ConstantConditions
-        getContext().getContentResolver().notifyChange(uri, null);
+        mUrisToNotify.put(uri, true);
         return count;
     }
 
@@ -187,11 +183,24 @@ public abstract class BaseContentProvider extends ContentProvider {
         }
     }
 
+    @Override
+    protected void notifyChange(boolean syncToNetwork) {
+        Set<Uri> uris = mUrisToNotify.keySet();
+        for (Uri uri : uris) {
+            //noinspection ConstantConditions
+            ContentResolver contentResolver = getContext().getContentResolver();
+            contentResolver.notifyChange(uri, null, syncToNetwork);
+        }
+
+        mUrisToNotify.clear();
+    }
+
     protected abstract String getItemListContentType();
     protected abstract String getItemSingleContentType();
     protected abstract int getItemListUriId();
     protected abstract int getItemSingleUriId();
     protected abstract String getDefaultSortOrder();
+    protected abstract String getTableName();
 
     protected final UriMatcher getUriMatcher() {
         if (mUriMatcher == null) {
@@ -210,14 +219,12 @@ public abstract class BaseContentProvider extends ContentProvider {
 
     protected abstract HashMap<String, String> createProjectionMap();
 
-    protected abstract BaseDatabaseHelper createDatabaseHelper();
-
     protected final SQLiteDatabase getReadableDatabase() {
-        return mDbHelper.getReadableDatabase();
+        return getDatabaseHelper().getReadableDatabase();
     }
 
     protected final SQLiteDatabase getWritableDatabase() {
-        return mDbHelper.getWritableDatabase();
+        return getDatabaseHelper().getWritableDatabase();
     }
 
 }

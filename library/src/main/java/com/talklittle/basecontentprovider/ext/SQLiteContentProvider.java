@@ -81,7 +81,6 @@ public abstract class SQLiteContentProvider extends ContentProvider
 
     protected abstract void notifyChange(boolean syncToNetwork);
 
-    @SuppressWarnings("unused")
     protected SQLiteOpenHelper getDatabaseHelper() {
         return mOpenHelper;
     }
