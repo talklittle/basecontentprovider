@@ -328,7 +328,7 @@ public abstract class SQLiteContentProvider extends ContentProvider
 
     /**
      * Call {@link Binder#restoreCallingIdentity(long)}.
-     * </p>
+     *
      * If this is the last restore on the stack of calls to
      * {@link android.os.Binder#clearCallingIdentity()}, then the cached calling package will also
      * be cleared.
