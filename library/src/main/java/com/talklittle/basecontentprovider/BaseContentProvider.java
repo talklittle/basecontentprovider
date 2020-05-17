@@ -20,6 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class BaseContentProvider extends SQLiteContentProvider {
 
+    public static final String PARAM_LIMIT = "limit";
+
     private UriMatcher mUriMatcher;
     private HashMap<String, String> mProjectionMap;
 
@@ -50,9 +52,11 @@ public abstract class BaseContentProvider extends SQLiteContentProvider {
             orderBy = sortOrder;
         }
 
+        String limit = uri.getQueryParameter(PARAM_LIMIT);
+
         // Get the database and run the query
         SQLiteDatabase db = getReadableDatabase();
-        Cursor c = qb.query(db, projection, selection, selectionArgs, null, null, orderBy);
+        Cursor c = qb.query(db, projection, selection, selectionArgs, null, null, orderBy, limit);
 
         // Tell the cursor what uri to watch, so it knows when its source data changes
         //noinspection ConstantConditions
