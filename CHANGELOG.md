@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 (2020-05-17)
+
+* Support "limit" query parameter in content Uri
+
 ## 0.3.0 (2018-11-10)
 
 * Disable write-ahead logging on Android P (9.0). P enables it by default, breaking the contract
