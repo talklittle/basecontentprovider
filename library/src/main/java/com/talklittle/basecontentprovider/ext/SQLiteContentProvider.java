@@ -30,9 +30,10 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Process;
 import android.provider.CalendarContract;
-import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
+
+import androidx.annotation.NonNull;
 
 /**
  * General purpose {@link ContentProvider} base class that uses SQLiteDatabase for storage.
