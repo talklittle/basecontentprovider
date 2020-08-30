@@ -15,7 +15,7 @@ buildscript {
 
 // for local Maven repo via com.github.dcendents:android-maven-gradle-plugin
 group = 'com.talklittle.basecontentprovider'
-version = '0.4.0'
+version = '0.5.0'
 project.archivesBaseName = 'basecontentprovider'
 
 // for bintray
@@ -24,7 +24,7 @@ publish {
     repoName = 'android-libraries'
     groupId = 'com.talklittle.basecontentprovider'
     artifactId = 'basecontentprovider'
-    publishVersion = '0.4.0'
+    publishVersion = '0.5.0'
     desc = 'Android Base ContentProvider for SQLite convenience'
     website = 'https://github.com/talklittle/basecontentprovider'
 }

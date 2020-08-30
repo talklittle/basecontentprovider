@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 (2020-08-30)
+
+* Throw an UnsupportedOperationException from BaseDatabaseHelper.onUpgrade() instead of deleting data by default.
+
 ## 0.4.0 (2020-05-17)
 
 * Support "limit" query parameter in content Uri
