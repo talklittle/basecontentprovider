@@ -33,5 +33,5 @@ wrapper {
 ext {
     PUBLISH_GROUP_ID = 'com.talklittle.basecontentprovider'
     PUBLISH_ARTIFACT_ID = 'basecontentprovider'
-    PUBLISH_VERSION = '0.6.0'
+    PUBLISH_VERSION = '0.6.1'
 }

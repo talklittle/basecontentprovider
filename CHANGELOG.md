@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.6.0 (2021-04-16)
+## 0.6.1 (2021-04-16)
 
 * Migrate to Maven Central repository hosting.
+* (0.6.1) Fixed invalid "unspecified" jar dependency.
 
 ## 0.5.0 (2020-08-30)
 
