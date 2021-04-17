@@ -1,23 +1,5 @@
 apply plugin: 'com.android.library'
 
-apply plugin: 'com.github.dcendents.android-maven'
-apply plugin: 'com.jfrog.bintray'
-
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.5'
-    }
-}
-
-group = 'com.talklittle.basecontentprovider'
-version = '0.5.0'
-// for local Maven repo via com.github.dcendents:android-maven-gradle-plugin
-project.archivesBaseName = 'basecontentprovider'
-
 android {
     compileSdkVersion 30
     buildToolsVersion "30.0.3"
@@ -43,45 +25,8 @@ dependencies {
     implementation 'androidx.annotation:annotation:1.2.0'
 }
 
-task sourcesJar(type: Jar) {
-    if (project.getPlugins().hasPlugin('com.android.application') ||
-            project.getPlugins().hasPlugin('com.android.library')) {
-        from android.sourceSets.main.java.srcDirs
-    }
-    classifier = 'sources'
-}
+group = PUBLISH_GROUP_ID
+archivesBaseName = PUBLISH_ARTIFACT_ID
+version = PUBLISH_VERSION
 
-if (project.getPlugins().hasPlugin('com.android.application') ||
-        project.getPlugins().hasPlugin('com.android.library')) {
-    task javadoc(type: Javadoc) {
-        failOnError = false
-        source = android.sourceSets.main.java.srcDirs
-        classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-    }
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
-artifacts {
-    archives javadocJar
-    archives sourcesJar
-}
-
-bintray {
-    user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
-    key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_API_KEY')
-    configurations = ['archives']
-    publish = true
-    pkg {
-        repo = 'android-libraries'
-        name = 'basecontentprovider'
-        userOrg = 'talklittle-llc'
-        desc = 'Android Base ContentProvider for SQLite convenience'
-        websiteUrl = 'https://github.com/talklittle/basecontentprovider'
-        vcsUrl = 'https://github.com/talklittle/basecontentprovider.git'
-        licenses = ['Apache-2.0']
-    }
-}
+apply from: "$rootProject.rootDir/gradle/publish-mavencentral.gradle"

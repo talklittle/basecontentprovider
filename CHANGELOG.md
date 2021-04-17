@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 (2021-04-16)
+
+* Migrate to Maven Central repository hosting.
+
 ## 0.5.0 (2020-08-30)
 
 * Throw an UnsupportedOperationException from BaseDatabaseHelper.onUpgrade() instead of deleting data by default.
